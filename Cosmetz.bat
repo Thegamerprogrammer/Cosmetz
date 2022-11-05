@@ -154,7 +154,7 @@ goto Continue
 
 
 :Continue
-echo Clearing Junk Files Might Take A While DONT SWITCH OF YOUR COMOUTER OR TURN OFF THIS PROGRAM!
+echo Clearing Junk Files Might Take A While DONT SWITCH OF YOUR COMPUTER OR EXIT THIS PROGRAM!
 
 echo Clearing junk Files May Take A While Depending On Your Hardware! 
 timeout 4
