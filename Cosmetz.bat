@@ -55,7 +55,8 @@ echo Disables Ticks
 echo Disables Search Indexing
 echo Clears Network Cache
 echo Clears Ms Store Cache
-echo Scans And Repairs Curropted Files
+echo Scans And Repairs Corrupted Files
+echo Uses Chkdsk to fix logical problems with the drive HARD DRIVE ONLY
 echo Restarts Services
 echo Restarts Windows
 pause
