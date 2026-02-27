@@ -1,27 +1,46 @@
-# 🚀 Cosmetz 3.9 — Interactive Windows Optimization Command Center
+# Cosmetz 3.5 (Interactive Scout + Creative + Thermal Benchmark Edition)
 
-Cosmetz is an advanced, safety-aware Windows optimizer for gaming, creative workflows, and overall responsiveness.
+Cosmetz is a Windows optimization suite focused on **interactive control + safety checks + deep versatility + benchmark comparison**.
 
-## 🌟 New in 3.9
+## New in 3.5
 
-- **Preference Profile System**
-  - Export current optimization preferences to JSON
-  - Import previously saved preferences in one click
-- **Safety + Readiness Health Check**
-  - Pre-flight checks for admin state, internet, free disk space, and current thermals
-  - Actionable warnings before deep operations
-- **More Interactive Command Center**
-  - Expanded menu now includes profile management + health checks
-- **Ongoing UX/Safety polish**
-  - Major task progress indicators
-  - “Do not close this window” prompts
-  - Freeze indicator for long-running operations
+- Interactive menu for every operation and every step:
+  - Run / Skip / Fallback / Details
+- Animated terminal background effect in Rich-enabled terminals.
+- Optimization modes:
+  - **Aggressive** (all available steps)
+  - **Balanced** (low + medium risk)
+  - **Peaceful** (low-risk but still effective steps)
+- Internet/doc safety scout before each step:
+  - Internet connectivity check
+  - Docs reachability check for referenced Windows command area
+  - Can block medium/high-risk steps when checks fail
+- Broad platform detection:
+  - CPU/GPU/RAM/core tier
+  - Architecture
+  - Manufacturer/model
+  - Laptop/desktop inference
+- Expanded RAM optimization suite.
+- Bigger GitHub scouting across more queries and pages.
+- **New Creative Workstation Boost** for creators:
+  - Stability/performance-focused settings for editing, rendering, and content workflows
+  - Includes memory, power, and creator-friendly system tuning paths
+- **Thermal-guarded benchmarking with FPS chart + % increase**:
+  - Baseline benchmark capture
+  - Optional optimization pack run
+  - Post-optimization benchmark capture
+  - Before/after chart and delta percentage
+  - **Temperature monitoring during benchmark with automatic cutoff at 90°C**
 
----
+## Benchmarking details
 
-## 🧩 Feature Overview
+- Uses built-in **WinSAT** to collect system scores (CPU, memory, graphics, D3D, disk).
+- Derives an estimated FPS metric from graphics-related score for before/after comparison.
+- Includes optional user-permission prompt to install external benchmark software via `winget` (best effort), then falls back to WinSAT if installation fails.
+- Polls temperatures during benchmark using available sensors (best effort) and aborts run if the temperature reaches/exceeds 90°C.
 
-### Optimization Workflows
+## Workflows
+
 1. Explain Plan
 2. Quick Optimize
 3. Gaming Boost
@@ -35,58 +54,29 @@ Cosmetz is an advanced, safety-aware Windows optimizer for gaming, creative work
 11. Benchmark FPS Chart + Compare
 12. Revert Tweaks
 13. Re-run Setup
-14. Live Status Dashboard
-15. Export Preferences Profile
-16. Import Preferences Profile
-17. Safety + Readiness Health Check
-0. Exit
 
-### Safety System
-- Dry-run support
-- Category-level permission toggles
-- Internet/docs guards for risky operations
-- Interactive run/skip/fallback/details controls
-- Thermal cutoff during benchmark (90°C)
+## Safety controls
 
-### Diagnostics + Intelligence
-- Hardware tier and profile detection
-- Largest RAM process view
-- Folder size analysis
-- GitHub optimization repository scouting with optional token support
+- Dry-run preview mode
+- Granular category toggles (registry, BCD, service, network, storage, visual, memory)
+- Step-level confirmations
+- Fallback paths when category is disabled or user skips a step
+- Internet/document guard checks for each step (optional)
 
----
-
-## 📦 Install
+## Install
 
 ```powershell
 pip install rich psutil
 ```
 
-## ▶️ Run
+## Run
 
 ```powershell
 python cosmetz.py
 ```
 
-or:
+or launch:
 
 ```text
 Cosmetz.bat
 ```
-
----
-
-## 🔐 Optional GitHub Token (Recommended)
-
-For better API limits while scouting repositories:
-
-```powershell
-$env:GITHUB_TOKEN="<your_token_here>"
-python cosmetz.py
-```
-
----
-
-## ⚠️ Safety Notice
-
-Cosmetz applies system-level changes. Always review each step and keep backups/restore options enabled before aggressive tuning.

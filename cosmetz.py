@@ -8,7 +8,6 @@ import json
 import os
 import platform
 import re
-import shutil
 import socket
 import subprocess
 import sys
@@ -21,7 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 APP_NAME = "Cosmetz"
-APP_VERSION = "3.9"
+APP_VERSION = "3.5"
 LOG_FILE = Path(__file__).with_name("Cosmetz.log")
 
 try:
@@ -115,8 +114,8 @@ class CosmetzApp:
 
     def log(self, message: str) -> None:
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with LOG_FILE.open("a", encoding="utf-8") as handle:
-            handle.write(f"[{stamp}] {message}\n")
+        prev = LOG_FILE.read_text(encoding="utf-8") if LOG_FILE.exists() else ""
+        LOG_FILE.write_text(prev + f"[{stamp}] {message}\n", encoding="utf-8")
 
     def ask_yes_no(self, prompt: str, default: bool = True) -> bool:
         suffix = " [Y/n]: " if default else " [y/N]: "
@@ -182,14 +181,6 @@ class CosmetzApp:
                 self.revert_defaults()
             elif choice == "13":
                 self.preferences = self.setup_wizard()
-            elif choice == "14":
-                self.show_live_status(hw, sp)
-            elif choice == "15":
-                self.export_preferences_profile(hw, sp)
-            elif choice == "16":
-                self.import_preferences_profile()
-            elif choice == "17":
-                self.safety_health_check(hw, sp)
             elif choice == "0":
                 self.cprint("Thanks for using Cosmetz.")
                 return
@@ -202,120 +193,6 @@ class CosmetzApp:
             self.console.print(Panel.fit(f"[bold magenta]{t}[/bold magenta]\n[cyan]Animated UI + per-step controls + safety scouting[/cyan]", border_style="magenta"))
         else:
             print(t)
-
-    def show_live_status(self, hw: HardwareProfile, sp: SystemProfile) -> None:
-        mode = self.preferences.mode if self.preferences else "balanced"
-        dry = "ON" if self.preferences and self.preferences.dry_run else "OFF"
-        net_guard = "ON" if self.preferences and self.preferences.internet_guard else "OFF"
-
-        if self.console and Table:
-            t = Table(title="Live Status Dashboard")
-            t.add_column("Signal")
-            t.add_column("Value")
-            t.add_row("Optimization Mode", mode)
-            t.add_row("Dry-Run", dry)
-            t.add_row("Internet Guard", net_guard)
-            t.add_row("Detected Tier", hw.tier)
-            t.add_row("CPU Cores", str(hw.cpu_cores))
-            t.add_row("RAM", f"{hw.ram_gb} GB")
-            t.add_row("Device", "Laptop" if sp.is_laptop else "Desktop")
-            t.add_row("OS", f"{sp.os_caption} ({sp.os_build})")
-            self.console.print(t)
-        else:
-            print(f"mode={mode} dry_run={dry} internet_guard={net_guard} tier={hw.tier}")
-
-    def export_preferences_profile(self, hw: HardwareProfile, sp: SystemProfile) -> None:
-        if not self.preferences:
-            self.cprint("Preferences are not initialized yet.")
-            return
-        target = input("Save profile filename [cosmetz_profile.json]: ").strip() or "cosmetz_profile.json"
-        path = Path(target)
-        payload = {
-            "app": APP_NAME,
-            "version": APP_VERSION,
-            "created_at": datetime.now().isoformat(timespec="seconds"),
-            "preferences": self.preferences.__dict__,
-            "snapshot": {
-                "cpu": hw.cpu_name,
-                "gpu": hw.gpu_name,
-                "ram_gb": hw.ram_gb,
-                "tier": hw.tier,
-                "manufacturer": sp.manufacturer,
-                "model": sp.model,
-                "os": sp.os_caption,
-                "build": sp.os_build,
-            },
-        }
-        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        self.log(f"Exported preferences profile to {path}")
-        self.cprint(f"✅ Saved profile to {path}")
-
-    def import_preferences_profile(self) -> None:
-        target = input("Load profile filename [cosmetz_profile.json]: ").strip() or "cosmetz_profile.json"
-        path = Path(target)
-        if not path.exists():
-            self.cprint(f"Profile file not found: {path}")
-            return
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            prefs = data.get("preferences", {})
-            self.preferences = Preferences(
-                dry_run=bool(prefs.get("dry_run", False)),
-                mode=str(prefs.get("mode", "balanced")),
-                allow_registry=bool(prefs.get("allow_registry", True)),
-                allow_bcd=bool(prefs.get("allow_bcd", False)),
-                allow_service_changes=bool(prefs.get("allow_service_changes", True)),
-                allow_network_resets=bool(prefs.get("allow_network_resets", True)),
-                allow_storage_tuning=bool(prefs.get("allow_storage_tuning", True)),
-                allow_visual_tuning=bool(prefs.get("allow_visual_tuning", False)),
-                allow_memory_tuning=bool(prefs.get("allow_memory_tuning", True)),
-                step_confirmations=bool(prefs.get("step_confirmations", True)),
-                internet_guard=bool(prefs.get("internet_guard", True)),
-            )
-            self.log(f"Imported preferences profile from {path}")
-            self.cprint(f"✅ Loaded profile from {path}")
-        except Exception as exc:  # noqa: BLE001
-            self.log(f"Profile import failed from {path}: {exc}")
-            self.cprint(f"❌ Could not load profile: {exc}")
-
-    def safety_health_check(self, hw: HardwareProfile, sp: SystemProfile) -> None:
-        self.cprint("\nRunning Safety + Readiness Health Check...")
-        system_drive = os.environ.get("SystemDrive", "C:")
-        root = system_drive + "\\" if not system_drive.endswith("\\") else system_drive
-        free_gb = 0.0
-        try:
-            usage = shutil.disk_usage(root)
-            free_gb = round(usage.free / (1024**3), 1)
-        except Exception:  # noqa: BLE001
-            pass
-
-        net_ok, net_msg = self.internet_check("")
-        temp = self.get_max_temperature_c()
-        state_rows = [
-            ("Admin", "yes" if self.is_admin() else "no"),
-            ("Internet", "ok" if net_ok else f"warn ({net_msg})"),
-            ("Free space", f"{free_gb} GB on {system_drive}"),
-            ("Current max temp", f"{temp:.1f}°C" if temp is not None else "unknown"),
-            ("Optimization mode", self.preferences.mode if self.preferences else "unknown"),
-            ("System tier", hw.tier),
-            ("Platform", f"{sp.manufacturer} {sp.model}"),
-        ]
-
-        if self.console and Table:
-            t = Table(title="Safety + Readiness Health Check")
-            t.add_column("Check")
-            t.add_column("Status")
-            for k, v in state_rows:
-                t.add_row(k, v)
-            self.console.print(t)
-        else:
-            for k, v in state_rows:
-                print(f"{k}: {v}")
-
-        if free_gb < 15:
-            self.cprint("⚠️ Low disk space warning: keep at least 15 GB free before deep repair/benchmark steps.")
-        if temp is not None and temp >= 85:
-            self.cprint("⚠️ Elevated thermals detected before optimization/benchmark. Consider cooling first.")
 
     @staticmethod
     def is_admin() -> bool:
@@ -352,25 +229,9 @@ class CosmetzApp:
 
     def menu(self) -> str:
         self.cprint(
-            "\n🎛️  COSMETZ INTERACTIVE COMMAND CENTER"
-            "\n1  Explain Plan"
-            "\n2  Quick Optimize"
-            "\n3  Gaming Boost"
-            "\n4  RAM + Memory Suite"
-            "\n5  Creative Workstation Boost"
-            "\n6  Deep Repair"
-            "\n7  Network Toolkit"
-            "\n8  Driver + OEM Assistant"
-            "\n9  Heavy App Analyzer"
-            "\n10 Massive GitHub Scout"
-            "\n11 Benchmark FPS Chart + Compare"
-            "\n12 Revert Tweaks"
-            "\n13 Re-run Setup"
-            "\n14 Live Status Dashboard"
-            "\n15 Export Preferences Profile"
-            "\n16 Import Preferences Profile"
-            "\n17 Safety + Readiness Health Check"
-            "\n0  Exit"
+            "\n1 Explain Plan\n2 Quick Optimize\n3 Gaming Boost\n4 RAM + Memory Suite\n5 Creative Workstation Boost\n"
+            "6 Deep Repair\n7 Network Toolkit\n8 Driver + OEM Assistant\n9 Heavy App Analyzer\n10 Massive GitHub Scout\n"
+            "11 Benchmark FPS Chart + Compare\n12 Revert Tweaks\n13 Re-run Setup\n0 Exit"
         )
         return input("Select option: ").strip()
 
@@ -426,24 +287,13 @@ class CosmetzApp:
         if self.preferences and self.preferences.dry_run:
             self.log(f"DRY-RUN: {' '.join(cmd)}")
             return 0
-        self.cprint("⚠️ Do not close this window while this step is running.")
         try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            started = time.time()
-            freeze_notified = False
-            while proc.poll() is None:
-                if (time.time() - started) >= 20 and not freeze_notified:
-                    freeze_notified = True
-                    self.cprint("⏳ Freeze indicator: still running. This can be normal for heavy Windows operations.")
-                    self.log(f"Freeze indicator triggered: {' '.join(cmd)}")
-                time.sleep(1)
-
-            stdout, stderr = proc.communicate()
+            proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
             self.log(f"CMD {' '.join(cmd)} => {proc.returncode}")
-            if stdout.strip():
-                self.log(stdout.strip()[:1000])
-            if stderr.strip():
-                self.log(stderr.strip()[:1000])
+            if proc.stdout.strip():
+                self.log(proc.stdout.strip()[:1000])
+            if proc.stderr.strip():
+                self.log(proc.stderr.strip()[:1000])
             return proc.returncode
         except Exception as exc:  # noqa: BLE001
             self.log(f"CMD ERROR {' '.join(cmd)}: {exc}")
@@ -502,19 +352,8 @@ class CosmetzApp:
         self.run_cmd(step.command)
 
     def run_steps(self, title: str, steps: List[Step]) -> None:
-        if not steps:
-            return
-        self.cprint(f"\n[MAJOR TASK] {title}\nPlease do not close this window until the progress bar reaches 100%.")
         if self.console and Progress:
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TextColumn("[cyan]{task.completed}/{task.total}[/cyan]"),
-                TextColumn("[green]{task.percentage:>3.0f}%[/green]"),
-                TimeElapsedColumn(),
-                console=self.console,
-            ) as progress:
+            with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), TimeElapsedColumn(), console=self.console) as progress:
                 task = progress.add_task(title, total=len(steps))
                 for st in steps:
                     progress.update(task, description=st.description)
@@ -522,12 +361,9 @@ class CosmetzApp:
                     progress.advance(task)
         else:
             print(title)
-            total = len(steps)
-            for i, st in enumerate(steps, start=1):
-                pct = int(((i - 1) / total) * 100)
-                print(f"[{pct:>3}%] {st.description} | do not close this window")
+            for st in steps:
+                print("-", st.description)
                 self.execute_step(st)
-            print("[100%] Completed")
 
     def detect_hardware_profile(self) -> HardwareProfile:
         cpu_name, gpu_name = "Unknown CPU", "Unknown GPU"
@@ -786,33 +622,18 @@ class CosmetzApp:
         queries = [
             "windows optimizer python", "windows tweak tool python", "pc optimization python",
             "windows gaming optimizer python", "windows debloat python", "system tuning python windows",
-            "win11 optimizer python", "windows latency optimizer python", "windows 10 optimizer",
-            "windows 11 optimizer", "insider build windows performance", "gaming latency optimizer windows",
+            "win11 optimizer python", "windows latency optimizer python",
         ]
         repos: Dict[str, tuple[str, str, str]] = {}
-        token = os.environ.get("GITHUB_TOKEN", "").strip()
-        headers = {"Accept": "application/vnd.github+json", "User-Agent": "Cosmetz"}
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-
-        request_budget = 45
-        requests_done = 0
         for q in queries:
             for page in [1, 2, 3]:
-                if requests_done >= request_budget:
-                    self.log("GitHub scout request budget reached; stopping early to avoid hard rate-limits.")
-                    break
                 url = (
                     "https://api.github.com/search/repositories?q=" + urllib.parse.quote(q)
                     + f"&sort=stars&order=desc&per_page=30&page={page}"
                 )
                 try:
-                    req = urllib.request.Request(url, headers=headers)
+                    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "Cosmetz"})
                     with urllib.request.urlopen(req, timeout=20) as resp:
-                        requests_done += 1
-                        remaining = resp.headers.get("X-RateLimit-Remaining", "")
-                        if remaining.isdigit() and int(remaining) <= 2:
-                            self.cprint("⚠️ GitHub API limit nearly exhausted. Consider setting GITHUB_TOKEN.")
                         data = json.loads(resp.read().decode("utf-8", errors="ignore"))
                     for it in data.get("items", []):
                         name = it.get("full_name", "")
@@ -820,7 +641,6 @@ class CosmetzApp:
                             repos[name] = (name, str(it.get("stargazers_count", 0)), it.get("html_url", ""))
                 except Exception as exc:  # noqa: BLE001
                     self.log(f"GitHub query fail ({q},p{page}): {exc}")
-                time.sleep(0.2)
 
         rows = sorted(repos.values(), key=lambda x: int(x[1]), reverse=True)[:80]
         if self.console and Table:
